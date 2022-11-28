@@ -1,0 +1,3 @@
+dearpygui
+py-slippi
+python-dateutil
