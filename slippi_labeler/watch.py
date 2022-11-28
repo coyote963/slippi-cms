@@ -53,21 +53,16 @@ class MyWatcher:
                 time.sleep(sleep_interval)
         except:
             self.observer.stop()
-            print ("Error")
         self.observer.join()
 
 
     def preprocess_games(slippi_dir, metadata_path, cb):
         all_games = []
-        print("hello")
-
         if os.path.exists(metadata_path):
             with open(metadata_path, 'r') as f:
                 all_games = json.load(f)
         slippi_file_paths = glob.glob(slippi_dir + '/**/*.slp', recursive=True)
-        print("hello2")
         for idx, slp_fp in enumerate(slippi_file_paths):
-            print(slp_fp)
             if all(g['path'] != os.path.basename(slp_fp) for g in all_games):
                 all_games.append(extract_metadata(slp_fp))
                 cb(idx / len(slippi_file_paths))

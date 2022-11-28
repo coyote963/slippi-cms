@@ -9,8 +9,6 @@ import dearpygui.dearpygui as dpg
 
 import app_utils as utils
 from watch import MyWatcher
-# TODO REMOVE CONSTANTS
-metadata_path = '/home/coy/code/slippi-website/slippi_labeler/metadata.json'
 
 class SlippiLabeler:
 
@@ -49,7 +47,8 @@ class SlippiLabeler:
                 label="Reading Slippi Files",
                 tag="Progress Bar",
                 min_value=0,
-                max_value=1
+                max_value=1,
+                no_input=True
             )
         dpg.set_primary_window("Loading Window", True)
         
@@ -126,7 +125,6 @@ class SlippiLabeler:
         x.start()
 
     def update_progress_bar(self, progress):
-        print("Hello")
         dpg.set_value("Progress Bar", progress)
 
 
