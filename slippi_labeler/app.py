@@ -13,7 +13,9 @@ from query_startgg import StartClient
 
 class SlippiLabeler:
 
-
+    def __init__(self, width=600, height=600):
+        self.width = width
+        self.height = height
     
     def run(self):
         dpg.create_context()
@@ -216,11 +218,37 @@ class SlippiLabeler:
 
 
     def launch_annotation_dialog(self, items):
-        with dpg.window(label="Annotations", width=500, height=150):
-            for item in items:
-                dpg.add_input_text(label="Participant", tag=item[0])
-                dpg.add_combo(items=self.participants, source=item[0])
-                dpg.add_separator()
+        with dpg.window(label="Annotations",
+            width=self.width,
+            height=self.height,
+            modal=True):
+            with dpg.table(header_row=True,
+                resizable=True, 
+                policy=dpg.mvTable_SizingStretchProp,
+                borders_outerH=True,
+                borders_innerV=True, 
+                borders_innerH=True, 
+                borders_outerV=True,
+                tag='Annotations Table',
+            ):
+                dpg.add_table_column(label="Description")
+                dpg.add_table_column(label="P1")
+                dpg.add_table_column(label="P2")
+                dpg.add_table_column(label="P3")
+                dpg.add_table_column(label="P4")
+                for item in items:
+                    metadata = utils.extract_metadata(item[0])
+                    with dpg.table_row():
+                        with dpg.table_cell():
+                            dpg.add_text(utils.game_summary(metadata))
+                        for port, char in enumerate(metadata['characters']):
+                            with dpg.table_cell():
+                                if not char:
+                                    dpg.add_text("")
+                                else:
+                                    dpg.add_text(char)
+                                    dpg.add_input_text(label="##Participant", tag=f'{item[0]}-{port}')
+                                    dpg.add_combo(items=self.participants, source=f'{item[0]}-{port}')
 
 
     def combine_game_checked(self, filter=True):

@@ -7,7 +7,6 @@ PAGE_SIZE = 500
 class StartClient:
     def __init__(self, token=None):
         self.token = StartClient.load_token()
-        print(self.token)
 
 
     def load_token():
@@ -16,7 +15,6 @@ class StartClient:
 
 
     def query_start(self, query: str, variables: str):
-        print(query)
         return requests.post(
             STARTGG_ENDPOINT,
             json={
@@ -49,9 +47,9 @@ class StartClient:
                 'tournament_name': request_data['name'],
                 'participants': [node['gamerTag'] for node in request_data['participants']['nodes']]
             }
-        except Exception :
+        except Exception:
+            # TODO figure out logging
             print(traceback.format_exc())
-
             return None
             
 

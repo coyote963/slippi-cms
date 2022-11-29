@@ -64,7 +64,7 @@ class MyWatcher:
                 all_games = json.load(f)
         slippi_file_paths = glob.glob(slippi_dir + '/**/*.slp', recursive=True)
         for idx, slp_fp in enumerate(slippi_file_paths):
-            if all(g['path'] != os.path.basename(slp_fp) for g in all_games):
+            if all([os.path.basename(g['path']) != os.path.basename(slp_fp) for g in all_games]):
                 all_games.append(extract_metadata(slp_fp))
                 cb(idx / len(slippi_file_paths))
         with open(metadata_path, 'w+') as f:
