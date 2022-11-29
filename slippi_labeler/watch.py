@@ -28,15 +28,16 @@ class MyHandler(FileSystemEventHandler):
     
     def on_any_event(self, event):
         all_games = []
-        with open(self.metadata_filepath, 'r') as f:
-            all_games = json.load(f)
-        with open(self.metadata_filepath, 'w') as output_file:
-            if event.event_type == FILE_DELETED_EVENT:
-                all_games = [d for d in all_games if d['file_path'] != event.src_path]
-            if event.event_type == FILE_CREATED_EVENT:
-                all_games.append(extract_metadata(event.src_path))
-            json.dump(all_games, output_file, indent=4, default=str)
-            self.modified_callback(all_games)
+        if event.src_path.endswith('.slp'):
+            with open(self.metadata_filepath, 'r') as f:
+                all_games = json.load(f)
+            with open(self.metadata_filepath, 'w') as output_file:
+                if event.event_type == FILE_DELETED_EVENT:
+                    all_games = [d for d in all_games if d['file_path'] != event.src_path]
+                if event.event_type == FILE_CREATED_EVENT:
+                    all_games.append(extract_metadata(event.src_path))
+                json.dump(all_games, output_file, indent=4, default=str)
+                self.modified_callback(all_games)
 
 
 class MyWatcher:

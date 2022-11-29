@@ -1,3 +1,4 @@
 slippi_files/
 *.json
 __pycache__/
+test.py

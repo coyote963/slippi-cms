@@ -9,36 +9,113 @@ import dearpygui.dearpygui as dpg
 
 import app_utils as utils
 from watch import MyWatcher
+from query_startgg import StartClient 
 
 class SlippiLabeler:
 
-    metadata_path = '/home/coy/code/slippi-website/slippi_labeler/metadata.json'
-    slippi_dir = '/home/coy/code/slippi-website/slippi_files'
 
+    
     def run(self):
         dpg.create_context()
-        dpg.create_viewport(title='Custom Title', width=600, height=600)
-        dpg.add_file_dialog(
-            directory_selector=True,
-            show=False,
-            callback=self.todo,  
-            tag="slippi_dir_dialog_id"
-        )
-        with dpg.file_dialog(
-            directory_selector=False,
-            show=False,
-            callback=self.todo,
-            tag="annotations_file_dialog_id"):
-            dpg.add_file_extension(".json")
-        with dpg.window(tag="Config Window"):
-            dpg.add_button(label="Slippi Directory", callback=lambda: dpg.show_item("slippi_dir_dialog_id"))
-            dpg.add_button(label="Annotations File", callback=lambda: dpg.show_item("annotations_file_dialog_id"))
-            dpg.add_button(label="Submit", callback=lambda _: [self.display_loading_view(), self.start_watcher()])
+        dpg.create_viewport(title='Slippi Annotator', width=600, height=600)
         dpg.setup_dearpygui()
+        self.display_configuration_view()
         dpg.show_viewport()
         dpg.set_primary_window("Config Window", True)
         dpg.start_dearpygui()
         dpg.destroy_context()
+
+
+
+    def set_tournament(self):
+        self.tournament_name = dpg.get_value('tournament_input')
+        self.participants = utils.unique_participants(self.annotations_path)
+        client = StartClient(dpg.get_value('token_input'))
+        results = client.get_participants(self.tournament_name)
+        if results:
+            self.participants = results['participants']
+            self.tournament_name = results['tournament_name']
+    
+    def developer_override(self):
+        # TODO: Remove, this is a spoof of submit_configuration
+
+        self.metadata_path = '/home/coy/code/slippi-website/slippi_labeler/metadata.json'
+        self.annotations_path = '/home/coy/code/slippi-website/slippi_labeler/annotations.json'
+        self.slippi_dir = '/home/coy/code/slippi-website/slippi_files'
+        self.tournament_name = 'ludwig-smash-invitational'
+        self.display_loading_view()
+        self.start_watcher(preprocess=True)
+        client = StartClient(dpg.get_value('token_input'))
+        results = client.get_participants(self.tournament_name)
+        if results:
+            self.participants = results['participants']
+            self.tournament_name = results['tournament_name']
+
+
+    def submit_configuration(self):
+        if not self.slippi_dir:
+            dpg.add_text("You need to provide a slippi directory")
+            return
+        
+        if not self.tournament_name:
+            dpg.add_text("You need to provide a tournament name")
+            return
+
+        if not self.metadata_path:
+            self.metadata_path = utils.initialize_empty_array_file(
+                self.slippi_dir,
+                'metadata'
+            )
+        
+        if not self.annotations_path:
+            self.annotations_path = utils.generate_tournament_annotations(
+                self.slippi_dir,
+                self.tournament_name
+            )
+        self.display_loading_view()
+        self.start_watcher(preprocess=True)
+        self.set_tournament()
+
+
+    def setter_generator(self, attr_name: str):
+        def setter(_, app_data):
+            setattr(self, attr_name, app_data['file_path_name'])
+        return setter
+
+
+    def display_configuration_view(self):
+            dpg.add_file_dialog(
+                directory_selector=True,
+                show=False,
+                callback=self.setter_generator('slippi_dir'),  
+                tag="slippi_dir_dialog_id"
+            )
+
+            with dpg.file_dialog(
+                directory_selector=False,
+                show=False,
+                callback=self.setter_generator('annotations_path'),  
+                tag="annotations_file_dialog_id"):
+                dpg.add_file_extension(".json")
+        
+            with dpg.file_dialog(
+                directory_selector=False,
+                show=False,
+                callback=self.setter_generator('metadata_path'),  
+                tag="metadata_file_dialog_id"):
+                dpg.add_file_extension(".json")
+
+
+            with dpg.window(tag="Config Window"):
+                dpg.add_button(label="Developer Override", callback=self.developer_override)
+                dpg.add_button(label="Slippi Directory", callback=lambda: dpg.show_item("slippi_dir_dialog_id"))
+                dpg.add_button(label="Annotations File", callback=lambda: dpg.show_item("annotations_file_dialog_id"))
+                dpg.add_button(label="Annotations File", callback=lambda: dpg.show_item("metadata_file_dialog_id"))
+                dpg.add_input_text(label="Start.gg API Token", tag="token_input", password=True)
+                dpg.add_input_text(label="Tournament", tag="tournament_input")
+
+                dpg.add_button(label="Submit", callback=self.submit_configuration)
+        
 
     def display_loading_view(self):
         dpg.delete_item("Config Window")
@@ -69,12 +146,13 @@ class SlippiLabeler:
                     dpg.add_button(label="Slippi Directory", callback=lambda: dpg.show_item("slippi_dir_dialog_id"))
                     dpg.add_button(label="Annotations File", callback=lambda: dpg.show_item("annotations_file_dialog_id"))
                 dpg.add_menu_item(label="Help", callback=self.todo)
-
+                dpg.add_menu_item(label="Annotate", callback=self.handle_annotate)
             dpg.add_group(horizontal=True, tag='Main Content')
-    
+            
 
     def draw_games_table(self, metadata_path):
         dpg.delete_item('Games Table')
+        
         with dpg.table(header_row=True,
             resizable=True, 
             policy=dpg.mvTable_SizingStretchProp,
@@ -94,6 +172,7 @@ class SlippiLabeler:
             dpg.add_table_column(label="Date")
             
             metadata = json.load(open(metadata_path, 'r'))
+            self.checkbox_ids = []
             for m in metadata:
                 self.draw_game_row(m)
         
@@ -101,7 +180,8 @@ class SlippiLabeler:
     def draw_game_row(self, metadata):
         with dpg.table_row():
             with dpg.table_cell():
-                dpg.add_checkbox()
+                self.checkbox_ids.append(
+                    dpg.add_checkbox(label=f"{metadata['path']}"))
             with dpg.table_cell():
                 dpg.add_text(metadata['stage'])
             for character in metadata['characters']:
@@ -113,10 +193,12 @@ class SlippiLabeler:
             with dpg.table_cell():
                 dpg.add_text(utils.format_date(metadata['date']))
 
+
     def todo():
         print(f"To Be Made")
 
-    def start_watcher(self, preprocess = True):
+
+    def start_watcher(self, preprocess = False):
         w = MyWatcher(self.metadata_path, print)
         if preprocess:
             MyWatcher.preprocess_games(self.slippi_dir, self.metadata_path, self.update_progress_bar)
@@ -124,10 +206,34 @@ class SlippiLabeler:
         x = threading.Thread(target=w.run, args=(self.slippi_dir,), daemon=True)
         x.start()
 
+
     def update_progress_bar(self, progress):
         dpg.set_value("Progress Bar", progress)
 
 
+    def handle_annotate(self):
+        self.launch_annotation_dialog(self.combine_game_checked())
+
+
+    def launch_annotation_dialog(self, items):
+        with dpg.window(label="Annotations", width=500, height=150):
+            for item in items:
+                dpg.add_input_text(label="Participant", tag=item[0])
+                dpg.add_combo(items=self.participants, source=item[0])
+                dpg.add_separator()
+
+
+    def combine_game_checked(self, filter=True):
+        zipped_vals = list(zip(
+            [dpg.get_item_configuration(cid)['label'] for cid in self.checkbox_ids],
+            dpg.get_values(self.checkbox_ids)
+        ))
+        if filter:
+            zipped_vals = [v for v in zipped_vals if v[1]]
+        return zipped_vals
+
+
+    
 if __name__ == "__main__":
     s = SlippiLabeler()
     s.run()

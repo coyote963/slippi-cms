@@ -1,3 +1,5 @@
 dearpygui
 py-slippi
 python-dateutil
+requests
+python-slugify
