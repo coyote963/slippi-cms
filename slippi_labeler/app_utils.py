@@ -1,6 +1,14 @@
 import os
 import time
 from dateutil import parser
+import uuid
+from typing import Dict, List
+
+from slippi_labeler_game import SlippiLabelerGame
+from collections import defaultdict
+import dataclasses
+import json
+
 
 from slippi import Game
 from slugify import slugify
@@ -45,3 +53,37 @@ def unique_participants(annotations_fp):
 
 def generate_tournament_annotations(path, tournament_name):
     return initialize_empty_array_file(path, f"annotations_{slugify(tournament_name)}")
+
+
+def generate_uuid():
+    return uuid.uuid4()
+
+    
+def convert_uuid_to_rgb(uuid: uuid.UUID):
+    rgb = str(uuid)[:6]
+    return tuple(int(rgb[i:i+2], 16) for i in (0, 2, 4))
+
+
+def group_by_set(slgs: List[SlippiLabelerGame]) -> Dict[str, List[SlippiLabelerGame]]:
+    groups = defaultdict(list)
+    for obj in slgs:
+        if obj.is_annotated:
+            groups[str(obj.group_id)].append(obj)
+    return dict(groups)
+
+def format_port_display(slg: SlippiLabelerGame) -> str:
+    result = ""
+    for character, gamer_tag in zip(slg.characters, slg.gamer_tags):
+        if character and gamer_tag:
+            result += f"{gamer_tag} playing {character}\n"
+    return result
+
+
+
+class DataClassJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, SlippiLabelerGame):
+            o = dataclasses.asdict(o)
+            o['group_id'] = str(o['group_id'])
+            return o
+        return super().default(o)

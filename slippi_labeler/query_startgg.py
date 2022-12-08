@@ -45,6 +45,5 @@ class StartClient:
                 ],
             }
         except Exception:
-            # TODO figure out logging
             print(traceback.format_exc())
             return None

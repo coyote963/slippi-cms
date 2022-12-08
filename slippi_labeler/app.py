@@ -1,30 +1,17 @@
 import json
 import threading
-from typing import List
-from dataclasses import dataclass
+from typing import List, Union
 
 import dearpygui.dearpygui as dpg
 
 import app_utils as utils
 from watch import MyWatcher
 from query_startgg import StartClient
+from slippi_labeler_game import SlippiLabelerGame
 
 SPLIT_CHAR = "//"
-HIGHLIGHTED_RGB = (255, 255, 255)
 
 
-@dataclass
-class SlippiLabelerGame:
-    """Representation of a game in the UI"""
-
-    table_row: int
-    checkbox_id: int
-    game_path: str
-    stage: str
-    characters: list
-    gamer_tags: str
-    is_annotated: bool = False
-    is_selected: bool = False
 
 
 class SlippiLabeler:
@@ -196,19 +183,47 @@ class SlippiLabeler:
                         label="Annotations File",
                         callback=lambda: dpg.show_item("annotations_file_dialog_id"),
                     )
+                    
                 dpg.add_menu_item(label="Help", callback=self.todo)
                 dpg.add_menu_item(
                     label="Annotate", callback=self.launch_annotation_dialog
                 )
-            dpg.add_group(horizontal=True, tag="Main Content")
-        self.draw_games_table(self.metadata_path)
+                dpg.add_button(
+                    label="Export",
+                    callback=self.export_annotations
+                )
+            with dpg.group(horizontal=True, tag="Main Content"):
+                dpg.add_child_window(
+                    tag="Left Window",
+                    border=False, width=1200, horizontal_scrollbar=True, autosize_y=True)
+                dpg.add_child_window(
+                    tag="Right Window",
+                    border=True, 
+                    horizontal_scrollbar=True, 
+                    autosize_y=True)
+        self.redraw_games_table()
+        self.redraw_history_view()
         dpg.set_primary_window("Main Window", True)
 
-    def draw_games_table(self, metadata_path: str):
-        """Generate the game index table from a metadata file
+    def redraw_history_view(self):
+        dpg.delete_item("History View")
+        with dpg.group(tag="History View", parent="Right Window"):
+            groups = utils.group_by_set([slg for slg in self.slg if slg.is_annotated])
+            for uuid in groups:
+                with dpg.child_window(
+                    border=True,
+                    height=200
+                ):
+                    dpg.add_text(f"Set: {uuid}", color=utils.convert_uuid_to_rgb(uuid), indent=1)
+                    for idx, game in enumerate(groups[uuid]):
+                        dpg.add_text(f"Game {idx+1} on {game.stage}.")
+                        if game_details := utils.format_port_display(game):
+                            dpg.add_text(game_details, bullet=True)
 
-        Args:
-            metadata_path (str): path to the metadata file for this directory
+
+            
+    def redraw_games_table(self):
+        """Generate the game index table from a metadata file
         """
         dpg.delete_item("Games Table")
         with dpg.table(
@@ -219,7 +234,7 @@ class SlippiLabeler:
             borders_innerH=True,
             borders_outerV=True,
             tag="Games Table",
-            parent="Main Content",
+            parent="Left Window",
         ):
             dpg.add_table_column(label="Group")
             dpg.add_table_column(label="Stage")
@@ -228,7 +243,7 @@ class SlippiLabeler:
             dpg.add_table_column(label="P3")
             dpg.add_table_column(label="P4")
             dpg.add_table_column(label="Date")
-            metadata = json.load(open(metadata_path, "r"))
+            metadata = json.load(open(self.metadata_path, "r"))
             self.slg: List[SlippiLabelerGame] = []
             for m in metadata:
                 self.draw_game_row(m)
@@ -237,7 +252,7 @@ class SlippiLabeler:
         """Highlight any rows that are annotated"""
         for s in self.slg:
             if s.is_annotated:
-                dpg.highlight_table_row("Games Table", s.table_row, HIGHLIGHTED_RGB)
+                dpg.highlight_table_row("Games Table", s.table_row, utils.convert_uuid_to_rgb(s.group_id))
 
     def handle_checkbox(self, sender):
         """Handle when the game index checkbox is clicked"""
@@ -250,7 +265,7 @@ class SlippiLabeler:
         with dpg.table_row(tag=f"table-row-{metadata['path']}"):
             with dpg.table_cell():
                 checkbox = dpg.add_checkbox(
-                    label=f"checkbox-{metadata['path']}", callback=self.handle_checkbox
+                    label=f"##checkbox-{metadata['path']}", callback=self.handle_checkbox
                 )
                 self.slg.append(
                     SlippiLabelerGame(
@@ -310,7 +325,9 @@ class SlippiLabeler:
             slgs (List[SlippiLabelerGame]): List of games that have been annotated
         """
         del _sender, _app_data
+        uuid = utils.generate_uuid()
         for slg in slgs:
+            slg.group_id = uuid
             slg.is_annotated = True
             slg.gamer_tags = [None] * 4
             for port, character in enumerate(slg.characters):
@@ -321,6 +338,7 @@ class SlippiLabeler:
         self.highlight_rows()
         dpg.delete_item("Annotations Window")
         self.reset_checkboxes()
+        self.redraw_history_view()
 
     def reset_checkboxes(self):
         """Reset all the checkboxes in the UI"""
@@ -391,6 +409,12 @@ class SlippiLabeler:
         """
         return f"{game_path}//{port}"
 
+
+    def export_annotations(self):
+        """Export the annotations to the user defined annotations file
+        """
+        with open(self.annotations_path, 'w+') as f:
+            json.dump(utils.group_by_set(self.slg), f, cls=utils.DataClassJSONEncoder, indent=4)
 
 if __name__ == "__main__":
     s = SlippiLabeler()
