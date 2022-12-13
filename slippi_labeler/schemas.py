@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Union
 import uuid
 
+
 @dataclass
 class SlippiLabelerGame:
     """Representation of a game in the UI"""
@@ -18,7 +19,7 @@ class SlippiLabelerGame:
 
 
 class GlobalViewUI:
-    text_color = (255,255,255)
+    text_color = (255, 255, 255)
     warning_text_color = (255, 165, 0)
     success_text_color = (0, 255, 0)
     failure_text_color = (255, 0, 0)
@@ -33,6 +34,6 @@ class GlobalViewUI:
     medium_button_width = 200
     large_button_height = 300
     large_button_width = 300
-    
+
     annotations_window_width = 1000
     annotations_window_height = 800

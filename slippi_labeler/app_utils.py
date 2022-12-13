@@ -58,10 +58,10 @@ def generate_tournament_annotations(path, tournament_name):
 def generate_uuid():
     return uuid.uuid4()
 
-    
+
 def convert_uuid_to_rgb(uuid: uuid.UUID):
     rgb = str(uuid)[:6]
-    return tuple(int(rgb[i:i+2], 16) for i in (0, 2, 4))
+    return tuple(int(rgb[i : i + 2], 16) for i in (0, 2, 4))
 
 
 def group_by_set(slgs: List[SlippiLabelerGame]) -> Dict[str, List[SlippiLabelerGame]]:
@@ -71,6 +71,7 @@ def group_by_set(slgs: List[SlippiLabelerGame]) -> Dict[str, List[SlippiLabelerG
             groups[str(obj.group_id)].append(obj)
     return dict(groups)
 
+
 def format_port_display(slg: SlippiLabelerGame) -> str:
     result = ""
     for character, gamer_tag in zip(slg.characters, slg.gamer_tags):
@@ -79,11 +80,10 @@ def format_port_display(slg: SlippiLabelerGame) -> str:
     return result
 
 
-
 class DataClassJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, SlippiLabelerGame):
             o = dataclasses.asdict(o)
-            o['group_id'] = str(o['group_id'])
+            o["group_id"] = str(o["group_id"])
             return o
         return super().default(o)
