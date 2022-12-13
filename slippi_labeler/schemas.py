@@ -24,7 +24,7 @@ class GlobalViewUI:
     success_text_color = (0, 255, 0)
     failure_text_color = (255, 0, 0)
     info_text_color = (170, 255, 170)
-    window_width = 1000
+    window_width = 1600
     window_height = 800
     file_selector_width = 500
     file_selector_height = 800

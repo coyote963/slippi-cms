@@ -1,29 +1,32 @@
-# Slippi Website
+# Slippi Collection Utilities
 
 Monorepo for some utilities that should make managing slippi files easier
 
-### Slippi Labeler
+---
 
-Python GUI that parses the slippi directory and allows the user to annotate the files, adding information such as set, player tags
+## Slippi Labeler
 
+During a tournament, use the Slippi Labeler to group games into sets. Label the players on each port
 
-### Coming Soon
+![](assets/screenshot.png)
 
-Slippi Export: Take the annotated files and generate youtube videos complete with thumbnail, overlay and uploaded to your youtube channel
+Automatically fetches a list of players from a Start.gg url. Then at the end, export the labels for record keeping or whatever you want!
 
-Slippi Website: A simple web frontend that serves the slippi files
+---
 
-### TODO
+## Slippi Export
 
-#### Slippi Labeller
+Slippi Export: Take the annotated files and generate youtube videos complete with thumbnail, description and overlay.
+
+---
+
+#### TODO
+
+##### Slippi Labeller
 
  - [x] Test the manual entry of values in the main screen (Completed 22-12-13)
  - [ ] Annotations file, which fields to keep, how to load it during startup?
- - [ ] FIGURE OUT WHAT HAPPENS WHEN A NEW FILE IS CREATED 
+ - [ ] Figure out reloading the UI when a new file is created 
  - [ ] Get all participants
  - [ ] Manual entry of participant should update participants list
  - [ ] Fix annotation with no check boxes
-
-#### Youtube Converter
-
- -

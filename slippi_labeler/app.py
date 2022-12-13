@@ -24,7 +24,13 @@ class SlippiLabeler:
     def run(self):
         """Displays the Slippi Labeler GUI"""
         dpg.create_context()
-        dpg.create_viewport(title="Slippi Annotator", width=600, height=600)
+        dpg.create_viewport(
+            title="Slippi Annotator", 
+            width=gbv.window_width, 
+            height=gbv.window_height,
+            resizable=True,
+                
+        )
         dpg.setup_dearpygui()
         self.set_font()
         
@@ -287,7 +293,6 @@ class SlippiLabeler:
         self.redraw_games_table()
         self.redraw_participants_list()
         self.redraw_history_view()
-
         dpg.set_primary_window("Main Window", True)
 
     def redraw_history_view(self):
