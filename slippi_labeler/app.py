@@ -7,11 +7,12 @@ import dearpygui.dearpygui as dpg
 import app_utils as utils
 from watch import MyWatcher
 from query_startgg import StartClient
-from slippi_labeler_game import SlippiLabelerGame
+from schemas import (
+    SlippiLabelerGame, 
+    GlobalViewUI as gbv
+)
 
 SPLIT_CHAR = "//"
-
-
 
 
 class SlippiLabeler:
@@ -39,18 +40,19 @@ class SlippiLabeler:
     def set_tournament(self):
         """Set the tournament name from the tournament field,
         prefetch the participants list from Start GG API"""
-        self.tournament_name = dpg.get_value("tournament_input")
-        self.participants = utils.unique_participants(self.annotations_path)
+        
         client = StartClient(dpg.get_value("token_input"))
         results = client.get_participants(self.tournament_name)
         if results:
             self.participants = results["participants"]
             self.tournament_name = results["tournament_name"]
+        else:
+            self.participants = utils.unique_participants(self.annotations_path)
+
 
     def developer_override(self):
         """Overwrite inputting the tournament information, for debugging purposes"""
         # TODO: Remove, this is a spoof of submit_configuration
-
         self.metadata_path = (
             "/home/coy/code/slippi-website/slippi_labeler/metadata.json"
         )
@@ -59,13 +61,16 @@ class SlippiLabeler:
         )
         self.slippi_dir = "/home/coy/code/slippi-website/slippi_files"
         self.tournament_name = "ludwig-smash-invitational"
-        self.display_loading_view()
-        self.start_watcher(preprocess=True)
+        
+        
         client = StartClient(dpg.get_value("token_input"))
         results = client.get_participants(self.tournament_name)
         if results:
             self.participants = results["participants"]
             self.tournament_name = results["tournament_name"]
+        
+        self.display_loading_view()
+        self.start_watcher(preprocess=True)
 
     def submit_configuration(self):
         """
@@ -73,19 +78,27 @@ class SlippiLabeler:
         and prefetch tournament participants
         """
         if not hasattr(self, "slippi_dir"):
-            dpg.add_text("You need to provide a slippi directory")
+            dpg.add_text(
+                "You need to provide a slippi directory", 
+                parent="Form Validation Errors",
+                color=gbv.failure_text_color
+            )
             return
 
-        if not hasattr(self, "tournament_name"):
-            dpg.add_text("You need to provide a tournament name")
+        if not dpg.get_value("tournament_input"):
+            dpg.add_text("You need to provide a tournament name",
+                parent="Form Validation Errors",
+                color=gbv.failure_text_color
+            )
             return
+        self.tournament_name = dpg.get_value("tournament_input")
 
         if not hasattr(self, "metadata_path"):
             self.metadata_path = utils.initialize_empty_array_file(
                 self.slippi_dir, "metadata"
             )
 
-        if not self.annotations_path:
+        if not hasattr(self, 'annotations_path'):
             self.annotations_path = utils.generate_tournament_annotations(
                 self.slippi_dir, self.tournament_name
             )
@@ -99,11 +112,10 @@ class SlippiLabeler:
         Args:
             attr_name (str): class name of Slippi Labeler to set
         """
-
-        def setter(_, app_data):
+        def set_and_update_label(_, app_data):
             setattr(self, attr_name, app_data["file_path_name"])
-
-        return setter
+            dpg.configure_item(f'{attr_name}_label', default_value=app_data["file_path_name"], color=gbv.success_text_color)
+        return set_and_update_label
 
     def display_configuration_view(self):
         """Display the Welcome/Configuration screen, display the various configuration fields"""
@@ -112,6 +124,7 @@ class SlippiLabeler:
             show=False,
             callback=self.setter_generator("slippi_dir"),
             tag="slippi_dir_dialog_id",
+            height=gbv.file_selector_height
         )
 
         with dpg.file_dialog(
@@ -119,6 +132,8 @@ class SlippiLabeler:
             show=False,
             callback=self.setter_generator("annotations_path"),
             tag="annotations_file_dialog_id",
+            height=gbv.file_selector_height
+
         ):
             dpg.add_file_extension(".json")
 
@@ -127,29 +142,61 @@ class SlippiLabeler:
             show=False,
             callback=self.setter_generator("metadata_path"),
             tag="metadata_file_dialog_id",
+            height=gbv.file_selector_height
+
         ):
             dpg.add_file_extension(".json")
 
         with dpg.window(tag="Config Window"):
             dpg.add_button(label="Developer Override", callback=self.developer_override)
-            dpg.add_button(
-                label="Slippi Directory",
-                callback=lambda: dpg.show_item("slippi_dir_dialog_id"),
-            )
-            dpg.add_button(
-                label="Annotations File",
-                callback=lambda: dpg.show_item("annotations_file_dialog_id"),
-            )
-            dpg.add_button(
-                label="Annotations File",
-                callback=lambda: dpg.show_item("metadata_file_dialog_id"),
-            )
-            dpg.add_input_text(
-                label="Start.gg API Token", tag="token_input", password=True
-            )
-            dpg.add_input_text(label="Tournament", tag="tournament_input")
+            with dpg.group(horizontal=True):
+                dpg.add_button(
+                    label="Slippi Folder",
+                    callback=lambda: dpg.show_item("slippi_dir_dialog_id"),
+                    width=gbv.medium_button_width,
+                    height=gbv.medium_button_height
+                )
+                dpg.add_text(
+                    "Required. Update based on Slippi Files in this folder and subfolders",
+                    tag="slippi_dir_label",
+                    color=gbv.info_text_color
+                )
 
-            dpg.add_button(label="Submit", callback=self.submit_configuration)
+            with dpg.group(horizontal=True):
+                dpg.add_button(
+                    label="Annotations File (Optional)",
+                    callback=lambda: dpg.show_item("annotations_file_dialog_id"),
+                    width=gbv.medium_button_width,
+                    height=gbv.medium_button_height
+                )
+                dpg.add_text(
+                    "Optional. Where to write the completed annotations. One will be created for you if left blank",
+                    tag="annotations_path_label",
+                    color=gbv.info_text_color
+
+                )
+            
+            with dpg.group(horizontal=True):
+                dpg.add_button(
+                    label="Metadata File (Optional)",
+                    callback=lambda: dpg.show_item("metadata_file_dialog_id"),
+                    width=gbv.medium_button_width,
+                    height=gbv.medium_button_height
+                )
+                dpg.add_text(
+                    "Optional. Where to store the Slippi games metadata. Leave empty if unsure",
+                    tag="metadata_path_label",
+                    color=gbv.info_text_color
+                )
+
+            dpg.add_input_text(
+                label="Start.gg API Token (Optional)", tag="token_input", password=True
+            )
+
+            dpg.add_input_text(label="Tournament Slug or Tournament", tag="tournament_input")
+            dpg.add_group(tag="Form Validation Errors")
+            dpg.add_button(label="Submit", callback=self.submit_configuration,  height=gbv.large_button_height,
+                width=gbv.large_button_width)
 
     def display_loading_view(self):
         """Display Loading Bar view while Slippi Files are parsed"""
@@ -164,34 +211,37 @@ class SlippiLabeler:
             )
         dpg.set_primary_window("Loading Window", True)
 
+
+    def draw_menu_bar(self):
+        with dpg.menu_bar(parent="Main Window"):
+            with dpg.menu(label="Settings"):
+                dpg.add_input_text(
+                    label="Default Tournament Name", callback=self.todo
+                )
+                dpg.add_button(
+                    label="Slippi Directory",
+                    callback=lambda: dpg.show_item("slippi_dir_dialog_id"),
+                )
+                dpg.add_button(
+                    label="Annotations File",
+                    callback=lambda: dpg.show_item("annotations_file_dialog_id"),
+                )
+            dpg.add_menu_item(label="Help", callback=self.todo)
+            dpg.add_menu_item(
+                label="Annotate", callback=self.launch_annotation_dialog
+            )
+            dpg.add_button(
+                label="Export",
+                callback=self.export_annotations
+            )
+
     def display_annotation_view(self):
         """
         Display game index view
         """
         dpg.delete_item("Loading Window")
         with dpg.window(tag="Main Window"):
-            with dpg.menu_bar():
-                with dpg.menu(label="Settings"):
-                    dpg.add_input_text(
-                        label="Default Tournament Name", callback=self.todo
-                    )
-                    dpg.add_button(
-                        label="Slippi Directory",
-                        callback=lambda: dpg.show_item("slippi_dir_dialog_id"),
-                    )
-                    dpg.add_button(
-                        label="Annotations File",
-                        callback=lambda: dpg.show_item("annotations_file_dialog_id"),
-                    )
-                    
-                dpg.add_menu_item(label="Help", callback=self.todo)
-                dpg.add_menu_item(
-                    label="Annotate", callback=self.launch_annotation_dialog
-                )
-                dpg.add_button(
-                    label="Export",
-                    callback=self.export_annotations
-                )
+            self.draw_menu_bar()
             with dpg.group(horizontal=True, tag="Main Content"):
                 dpg.add_child_window(
                     tag="Left Window",
@@ -202,7 +252,9 @@ class SlippiLabeler:
                     horizontal_scrollbar=True, 
                     autosize_y=True)
         self.redraw_games_table()
+        self.redraw_participants_list()
         self.redraw_history_view()
+        
         dpg.set_primary_window("Main Window", True)
 
     def redraw_history_view(self):
@@ -220,6 +272,17 @@ class SlippiLabeler:
                         if game_details := utils.format_port_display(game):
                             dpg.add_text(game_details, bullet=True)
 
+    def redraw_participants_list(self):
+        dpg.delete_item("Participants List")
+        with dpg.child_window(
+            border=True,
+            height=100,
+            parent="Right Window",
+            tag="Participants List"
+        ):
+            dpg.add_text("Participants List")
+            for participant in self.participants:
+                dpg.add_text(participant, bullet=True)
 
             
     def redraw_games_table(self):
@@ -228,7 +291,7 @@ class SlippiLabeler:
         dpg.delete_item("Games Table")
         with dpg.table(
             header_row=True,
-            policy=dpg.mvTable_SizingStretchProp,
+            policy=dpg.mvTable_SizingFixedFit,
             borders_outerH=True,
             borders_innerV=True,
             borders_innerH=True,
@@ -339,6 +402,7 @@ class SlippiLabeler:
         dpg.delete_item("Annotations Window")
         self.reset_checkboxes()
         self.redraw_history_view()
+        self.redraw_participants_list()
 
     def reset_checkboxes(self):
         """Reset all the checkboxes in the UI"""
@@ -351,21 +415,21 @@ class SlippiLabeler:
         with dpg.window(
             label="Annotations",
             tag="Annotations Window",
-            width=self.width,
-            height=self.height,
+            width=gbv.annotations_window_width,
+            height=gbv.annotations_window_height,
             modal=True,
         ):
             with dpg.table(
                 header_row=True,
                 resizable=True,
-                policy=dpg.mvTable_SizingStretchProp,
+                policy=dpg.mvTable_SizingStretchSame,
                 borders_outerH=True,
                 borders_innerV=True,
                 borders_innerH=True,
                 borders_outerV=True,
                 tag="Annotations Table",
             ):
-                dpg.add_table_column(label="Description")
+                dpg.add_table_column(label="Stage")
                 dpg.add_table_column(label="P1")
                 dpg.add_table_column(label="P2")
                 dpg.add_table_column(label="P3")
@@ -375,7 +439,7 @@ class SlippiLabeler:
                     if item.is_selected:
                         with dpg.table_row():
                             with dpg.table_cell():
-                                dpg.add_text(item.game_path)
+                                dpg.add_text(item.stage)
                             for port, char in enumerate(item.characters):
                                 with dpg.table_cell():
                                     if not char:
@@ -395,6 +459,8 @@ class SlippiLabeler:
                 label="Submit",
                 callback=self.handle_submit_annotations,
                 user_data=selected_items,
+                height=gbv.large_button_height,
+                width=gbv.large_button_width
             )
 
     def generate_input_tag(self, game_path: str, port: int) -> str:
@@ -419,3 +485,4 @@ class SlippiLabeler:
 if __name__ == "__main__":
     s = SlippiLabeler()
     s.run()
+     # TODO FIGURE OUT WHAT HAPPENS WHEN A NEW FILE IS CREATED AND BEGIN WORK ON THE YT CONVERTER

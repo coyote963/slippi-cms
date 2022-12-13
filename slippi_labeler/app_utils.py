@@ -4,7 +4,7 @@ from dateutil import parser
 import uuid
 from typing import Dict, List
 
-from slippi_labeler_game import SlippiLabelerGame
+from schemas import SlippiLabelerGame
 from collections import defaultdict
 import dataclasses
 import json
