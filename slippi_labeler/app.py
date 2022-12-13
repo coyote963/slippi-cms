@@ -31,8 +31,7 @@ class SlippiLabeler:
         self.display_configuration_view()
         
         dpg.show_viewport()
-        dpg.show_style_editor()
-        dpg.set_primary_window("Config Window", False)
+        dpg.set_primary_window("Config Window", True)
         self.set_theme()
         dpg.start_dearpygui()
         dpg.destroy_context()
@@ -59,7 +58,7 @@ class SlippiLabeler:
                 dpg.add_theme_color(dpg.mvThemeCol_TableBorderStrong, (0,0,0), category=dpg.mvThemeCat_Core)
                 dpg.add_theme_color(dpg.mvThemeCol_PopupBg, (228, 225, 219), category=dpg.mvThemeCat_Core)
                 dpg.add_theme_color(dpg.mvThemeCol_NavHighlight, (228, 225, 219), category=dpg.mvThemeCat_Core)
-                dpg.add_theme_color(dpg.mvStyleVar_FrameBorderSize, 1, category=dpg.mvThemeCat_Core)
+                dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 1, category=dpg.mvThemeCat_Core)
         if not item:
             dpg.bind_theme(theme)
         else:
@@ -264,7 +263,7 @@ class SlippiLabeler:
                 )
             dpg.add_menu_item(label="Help", callback=self.todo)
             dpg.add_menu_item(label="Annotate", callback=self.launch_annotation_dialog)
-            dpg.add_button(label="Export", callback=self.export_annotations)
+            dpg.add_menu_item(label="Export", callback=self.export_annotations)
 
     def display_annotation_view(self):
         """
